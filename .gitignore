@@ -32,9 +32,6 @@ local.properties
 ## project
 ######################
 
-./logs/*
-./target/*
-./yang-source/*
 *.yang
 ./.settings/*
 
