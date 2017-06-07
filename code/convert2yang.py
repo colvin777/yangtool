@@ -29,8 +29,9 @@ except ImportError as e:
 import logging.handlers
 from lxml import etree
 from io import BytesIO
-import threading
 import time
+import convertThread
+import Queue
 #import string
 #from functools import partial
 #from optparse import OptionParser
@@ -178,6 +179,7 @@ class convert():
             print('\n' + e.output)
             print >>sys.stderr, "Execution failed:", e
             raise e
+        
         return outputfileName
     
 class split_yin():
@@ -312,7 +314,7 @@ class handleYang():
 
                     
         logger.debug(listRY)
-     
+        
         for mo in listRY.keys():
             modulePath  = os.path.join(self.yintempDir, listRY[mo]+'.yin')
             logger.debug('remove include module path : %s' % modulePath)
@@ -395,10 +397,24 @@ class handleYang():
         if reWrite:
 #             os.remove(path)
             root.write(path) 
+    
+    def __enter__(self):
+        return self
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        if exc_type is None:
+            pass
+        else:
+            logger.error(exc_value)
+            raise RuntimeError(exc_value)
                             
 def concurrentConvert(neType, originPath):
-    handle = handleYang(neType)
-    handle.handle(originPath)
+    try:
+        with handleYang(neType) as handle:
+            handle.handle(originPath)
+    except Exception as e:
+        raise e
+#     handle = handleYang(neType)
+#     handle.handle(originPath)
 
 def checkTopModule(topPath):
     platformMod = False
@@ -578,6 +594,7 @@ USAGE
         handler = logging.handlers.RotatingFileHandler(log_file,
                                                        maxBytes=1000000,
                                                        backupCount=10)
+        handler.createLock()
         if (platform.system() == 'Windows'):
             date_format = '%Y-%m-%d %H:%M:%S'
         else:
@@ -689,12 +706,44 @@ USAGE
             except Exception as e:
                 return 1
             for xl in xslTruple:
-                t = threading.Thread(target=concurrentConvert,args=(xl, originPath))
+                bucket = Queue.Queue()
+                t = convertThread.catchThreadExcpetion(bucket, concurrentConvert,xl, originPath)
                 threads.append(t)
+#                 t.start()
+#                 t.join()
+#                 try:
+#                     t = threading.Thread(target=concurrentConvert,args=(xl, originPath))
+#                     threads.append(t)
+#                 except Exception as e:
+#                     return 1
             for t in threads:
+                t.setDaemon(True)
                 t.start()
-            for t in threads:
-                t.join()
+#                 t.join(0.1)
+                
+            while 1:
+#                 t.join()
+                if len(threads) == 0:
+                    break;
+                for t in threads:
+                    bucket = t.bucket
+                    try:
+                        exc = bucket.get(block=False)
+                    except Queue.Empty:
+                        pass
+                    else:
+                        exc_type, exc_obj, exc_trace = exc
+                        # deal with the exception
+                        logger.error(exc_obj)
+#                         for t in threads:
+#                             t.stop_thread(t)
+                        raise RuntimeError(exc_obj)
+                    
+                    if t.isAlive():
+                        continue
+                    else:
+                        threads.remove(t)
+                        break
             if not DEBUG:
                 removeAll().removeFileAndDir(originPath)
         end = time.time()
@@ -725,9 +774,12 @@ USAGE
             sys.stderr.write(traceback.format_exc())
         logger.critical('Exiting because of exception: {0}'.format(e))
         logger.critical(traceback.format_exc())
+        print('\nFailed to convert yang!')
+        logger.error('Failed to convert yang!')
         return 2
-
-
+    
+    finally:
+        handler.release()
 #------------------------------------------------------------------------------
 # MAIN SCRIPT ENTRY POINT.
 #------------------------------------------------------------------------------
