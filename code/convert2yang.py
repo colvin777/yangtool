@@ -594,7 +594,6 @@ USAGE
         handler = logging.handlers.RotatingFileHandler(log_file,
                                                        maxBytes=1000000,
                                                        backupCount=10)
-        handler.createLock()
         if (platform.system() == 'Windows'):
             date_format = '%Y-%m-%d %H:%M:%S'
         else:
@@ -778,8 +777,6 @@ USAGE
         logger.error('Failed to convert yang!')
         return 2
     
-    finally:
-        handler.release()
 #------------------------------------------------------------------------------
 # MAIN SCRIPT ENTRY POINT.
 #------------------------------------------------------------------------------
