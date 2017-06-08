@@ -52,7 +52,7 @@ logger = None
 
 topModule = []
 
-xslTruple = ('CE','HE','ICloud','SBC','SE')
+xslTruple = ('CE', 'CE-GUI', 'HE', 'HE-GUI', 'ICloud', 'ICloud-GUI','SBC', 'SBC-GUI','SE', 'SE-GUI')
 
 class paramsOut():
     #__slots__ = ['outPathDir', 'inpath', 'libPath', 'xslPath', 'python', 'pyang']
@@ -165,14 +165,14 @@ class convert():
             cmd += " --yang-remove-unused-imports"
         else:
             cmd += " --trim-yin"
-        logger.debug('pyang command: %s' % cmd)
+#         logger.debug('pyang command: %s' % cmd)
         
         import subprocess
         
 #         status = os.system(cmd)
         try:
             output1 = subprocess.check_output(cmd, stderr=subprocess.STDOUT,shell=True)
-            logger.debug(output1)
+#             logger.debug(output1)
         except Exception as e:
             logger.error(e.output)
             logger.error("Execution failed: %s", e)
@@ -319,7 +319,6 @@ class handleYang():
             modulePath  = os.path.join(self.yintempDir, listRY[mo]+'.yin')
             logger.debug('remove include module path : %s' % modulePath)
 #             print('remove include module path : %s' % modulePath)
-            #root = None
             checkfile(modulePath, 'when split yang, need its module:{0}, please make sure this module is valid')
             self.removeTag(modulePath, 'include', 'module', mo)
 #             root = etree.parse(modulePath)
@@ -355,7 +354,6 @@ class handleYang():
                     commonSubModuePath  = os.path.join(self.yintempDir, mo+'-common'+'.yin')
                     if os.path.exists(commonSubModuePath):
                         os.remove(commonSubModuePath)
-            logger.debug('status is %s' % deleteMo)   
             if deleteMo:
                 removeTopModule = False
                 os.remove(modulePath)
@@ -598,7 +596,7 @@ USAGE
             date_format = '%Y-%m-%d %H:%M:%S'
         else:
             date_format = '%Y-%m-%d %H:%M:%S.%f %z'
-        formatter = logging.Formatter('%(asctime)s %(name)s - '
+        formatter = logging.Formatter('%(asctime)s %(threadName)-10s %(name)s - %(lineno)d - '
                                       '%(levelname)s - %(message)s',
                                       date_format)
         handler.setFormatter(formatter)
@@ -705,9 +703,11 @@ USAGE
             except Exception as e:
                 return 1
             for xl in xslTruple:
-                bucket = Queue.Queue()
-                t = convertThread.catchThreadExcpetion(bucket, concurrentConvert,xl, originPath)
-                threads.append(t)
+                xsltfilePath = os.path.join(tool.xslPathDir, 'style-'+xl+'.xsl')
+                if os.path.exists(xsltfilePath):
+                    bucket = Queue.Queue()
+                    t = convertThread.catchThreadExcpetion(bucket, concurrentConvert,xl, originPath)
+                    threads.append(t)
 #                 t.start()
 #                 t.join()
 #                 try:
