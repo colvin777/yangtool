@@ -58,7 +58,6 @@ build/
 
 # MSTest test Results
 [Tt]est[Rr]esult*/
-[Bb]uild[Ll]og.*
 
 *_i.c
 *_p.c
@@ -76,12 +75,10 @@ build/
 *.tlh
 *.tmp
 *.tmp_proj
-*.log
 *.vspscc
 *.vssscc
 .builds
 *.pidb
-*.log
 *.scc
 
 # Visual C++ cache files
