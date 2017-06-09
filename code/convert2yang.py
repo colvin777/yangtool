@@ -315,12 +315,23 @@ class handleYang():
                     
         logger.debug(listRY)
         
-        for mo in listRY.keys():
-            modulePath  = os.path.join(self.yintempDir, listRY[mo]+'.yin')
-            logger.debug('remove include module path : %s' % modulePath)
+        moduleList = list(set(listRY.values()))
+        includedict = {}
+        for funcModule in moduleList:
+            includedict[funcModule] = []
+            for subKey in listRY.keys():
+                if funcModule == listRY[subKey]:
+                    includedict[funcModule].append(subKey)
+                    
+                    
+        
+        for mo in includedict.keys():
+            modulePath  = os.path.join(self.yintempDir, mo+'.yin')
+            logger.debug('remove include submodule in : %s' % modulePath)
+            logger.debug('need to remove submodule name: %s ' % modulePath)
 #             print('remove include module path : %s' % modulePath)
-            checkfile(modulePath, 'when split yang, need its module:{0}, please make sure this module is valid')
-            self.removeTag(modulePath, 'include', 'module', mo)
+#             checkfile(modulePath, 'when split yang, need its module:{0}, please make sure this module is valid')
+            self.removeTag(modulePath, 'include', 'module', includedict[mo])
 #             root = etree.parse(modulePath)
 #             expr = "//*[local-name() = $name]"
 #             lsms = root.xpath(expr, name = "include")
@@ -336,6 +347,7 @@ class handleYang():
 #         time.sleep(30)
         removeTopModule = True
         moduleList = list(set(listRY.values()))
+        needtoDeleteModule = []
         logger.debug('start check module is empty or not!')
         for mo in moduleList:
             logger.debug('check module path : %s' % mo)
@@ -345,7 +357,7 @@ class handleYang():
             expr = "//*[local-name() = $name]"
             lsms = root.xpath(expr, name = "include")
 #             for s in lsms:
-            logger.debug('module path is %s' % modulePath)
+            logger.debug('check module path is %s' % modulePath)
             if len(lsms) ==0 or lsms is None:
                 deleteMo = True
             elif len(lsms) == 1:
@@ -356,16 +368,26 @@ class handleYang():
                         os.remove(commonSubModuePath)
             if deleteMo:
                 removeTopModule = False
-                os.remove(modulePath)
+#                 os.remove(modulePath)
+                needtoDeleteModule.append(modulePath)
                 logger.debug('delete module is %s' % modulePath)
-                self.removeTag(os.path.join(self.yintempDir, 'gw-platform.yin'), 'import', 'module', mo)
-                self.removeTag(os.path.join(self.yintempDir, '_index_.yin'), 'import', 'module', mo)
+                self.removeTag(os.path.join(self.yintempDir, 'gw-platform.yin'), 'import', 'module', [mo])
+                self.removeTag(os.path.join(self.yintempDir, '_index_.yin'), 'import', 'module', [mo])
                    
         logger.debug('finish check module!') 
         if removeTopModule:
             os.remove(os.path.join(self.yintempDir, 'gw-platform.yin'))
             os.remove(os.path.join(self.yintempDir, '_index_.yin'))   
                 
+         
+        #======================================================================
+        # remove some modules that don't be used
+        #======================================================================
+        time.sleep(10)
+        for deleteModulePath in needtoDeleteModule:
+            if os.path.exists(deleteModulePath):
+                os.remove(deleteModulePath)
+         
                 
         for root, dirs, files in os.walk(self.yintempDir, topdown=False):
             for name in files:
@@ -382,16 +404,17 @@ class handleYang():
                     os.remove(os.path.join())
 
         
-    def removeTag(self, path, tag, AttributeName, value):
+    def removeTag(self, path, tag, AttributeName, valueList):
         reWrite = False
         root = etree.parse(path)
         expr = "//*[local-name() = $name]"
         lsms = root.xpath(expr, name =tag )
         for s in lsms:
-            if(s.get(AttributeName) == value):
-                reWrite = True
-                logger.debug('remove tag is %s' % s.get(AttributeName))
-                s.getparent().remove(s) 
+            for value in valueList:
+                if(s.get(AttributeName) == value):
+                    reWrite = True
+                    logger.debug('remove tag is %s' % s.get(AttributeName))
+                    s.getparent().remove(s) 
         if reWrite:
 #             os.remove(path)
             root.write(path) 
@@ -596,7 +619,7 @@ USAGE
             date_format = '%Y-%m-%d %H:%M:%S'
         else:
             date_format = '%Y-%m-%d %H:%M:%S.%f %z'
-        formatter = logging.Formatter('%(asctime)s %(threadName)-10s %(name)s - %(lineno)d - '
+        formatter = logging.Formatter('%(asctime)s %(processName)-10s %(threadName)-10s %(name)s - %(lineno)d - '
                                       '%(levelname)s - %(message)s',
                                       date_format)
         handler.setFormatter(formatter)
@@ -658,7 +681,6 @@ USAGE
         logger.info('lib path = {0}'.format(tool.libPathDir))
         logger.info('xsl path = {0}'.format(tool.xslPathDir))
       
-
         #----------------------------------------------------------------------
         # Perform some basic error checking on the config.
 #         #----------------------------------------------------------------------
