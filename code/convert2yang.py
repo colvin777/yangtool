@@ -158,7 +158,7 @@ class convert():
         cmd += "%s " % tool.pyang
         cmd += " -f %s " %fomat
         cmd += " -o %s" % outputfileName
-        cmd += " -p %s" % tool.libPathDir
+        cmd += " -p %s" % (tool.libPathDir + os.pathsep + inpath if os.path.isdir(inpath) and os.path.abspath(inpath) != os.path.abspath(tool.libPathDir) else tool.libPathDir)
         cmd += " %s" % inputfileName
 #         cmd += " --strict"
         if(fomat == 'yang') and not (inputfileName.endswith('gw-platform.yin') or inputfileName.endswith('_index_.yin')):
